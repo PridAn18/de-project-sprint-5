@@ -30,52 +30,12 @@ class Courier_ledgersOriginRepository:
         self._db = pg
 
     def list_courier_ledgers(self, courier_ledger_threshold: int, limit: int) -> List[Courier_ledgerObj]:
+        with open('courier_ledger.sql', 'r') as file:
+            sql_query = file.read()
         with self._db.client().cursor(row_factory=class_row(Courier_ledgerObj)) as cur:
             cur.execute(
-                """
-                    select * from(SELECT 
-                        ROW_NUMBER() OVER (ORDER BY c.courier_id, t."year", t."month") AS id,
-                        c.courier_id AS courier_id,
-                        c.courier_name,
-                        t."year" AS settlement_year,
-                        t."month" AS settlement_month,
-                        COUNT(DISTINCT o.id) AS orders_count,
-                        SUM(f.total_sum) AS orders_total_sum,
-                        AVG(d.rate) AS rate_avg,
-                        SUM(f.total_sum) * 0.25 AS order_processing_fee,
-
-                        CASE 
-                            WHEN AVG(d.rate) < 4 THEN GREATEST(SUM(f.total_sum) * 0.05, 100)
-                            WHEN AVG(d.rate) >= 4 AND AVG(d.rate) < 4.5 THEN GREATEST(SUM(f.total_sum) * 0.07, 150)
-                            WHEN AVG(d.rate) >= 4.5 AND AVG(d.rate) < 4.9 THEN GREATEST(SUM(f.total_sum) * 0.08, 175)
-                            WHEN AVG(d.rate) >= 4.9 THEN GREATEST(SUM(f.total_sum) * 0.10, 200)
-                        END AS courier_order_sum,
-
-                        SUM(d.tip_sum)::numeric(14,2) AS courier_tips_sum,
-
-                        (
-                            CASE 
-                                WHEN AVG(d.rate) < 4 THEN GREATEST(SUM(f.total_sum) * 0.05, 100)
-                                WHEN AVG(d.rate) >= 4 AND AVG(d.rate) < 4.5 THEN GREATEST(SUM(f.total_sum) * 0.07, 150)
-                                WHEN AVG(d.rate) >= 4.5 AND AVG(d.rate) < 4.9 THEN GREATEST(SUM(f.total_sum) * 0.08, 175)
-                                WHEN AVG(d.rate) >= 4.9 THEN GREATEST(SUM(f.total_sum) * 0.10, 200)
-                            END + SUM(d.tip_sum)
-                        ) * 0.95 AS courier_reward_sum
-
-                    FROM 
-                        dds.dm_couriers c 
-                    JOIN 
-                        dds.dm_deliveries d ON c.id = d.courier_id 
-                    JOIN 
-                        dds.dm_orders o ON d.order_id = o.id 
-                    JOIN 
-                        dds.fct_product_sales f ON o.id = f.order_id 
-                    JOIN 
-                        dds.dm_timestamps t ON o.timestamp_id = t.id  
-
-
-                    GROUP BY 
-                        c.courier_id, c.courier_name, t."year", t."month") dd
+                f"""
+                    select * from({sql_query}) dd
                     WHERE id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.

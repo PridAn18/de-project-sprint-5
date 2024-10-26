@@ -28,22 +28,13 @@ class Settlement_reportsOriginRepository:
         self._db = pg
 
     def list_settlement_reports(self, settlement_report_threshold: int, limit: int) -> List[Settlement_reportObj]:
+        with open('settlement_report.sql', 'r') as file:
+            sql_query = file.read()
         with self._db.client().cursor(row_factory=class_row(Settlement_reportObj)) as cur:
             cur.execute(
-                """
-                    select * from(select
-                    ROW_NUMBER() OVER (ORDER BY (SELECT 1))::int4 AS id,
-                    r.restaurant_id,
-                    r.restaurant_name,
-                    t."date"::text as settlement_date,
-                    count(distinct o.id) as orders_count,
-                    sum(f.total_sum)::numeric(14,2) as orders_total_sum,
-                    sum(f.bonus_payment)::numeric(14,2) as orders_bonus_payment_sum,
-                    sum(f.bonus_grant)::numeric(14,2) as orders_bonus_granted_sum,
-                    sum(f.total_sum)*0.25::numeric(14,2) as order_processing_fee,
-                    (sum(f.total_sum) - sum(f.total_sum)*0.25 - sum(f.bonus_payment))::numeric(14,2) as restaurant_reward_sum
-                    from dds.dm_restaurants r join (select * from dds.dm_orders where order_status = 'CLOSED') o on r.id = o.restaurant_id join dds.fct_product_sales f on o.id = f.order_id join dds.dm_timestamps t on o.timestamp_id = t.id
-                    group by r.restaurant_id, r.restaurant_name, t."date") dd
+                f"""
+                    select * from(
+                    {sql_query}) dd
                     WHERE id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.

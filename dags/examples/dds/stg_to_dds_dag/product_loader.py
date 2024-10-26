@@ -36,14 +36,14 @@ class ProductsOriginRepository:
                     FROM stg.ordersystem_orders
                     WHERE object_value::JSON->>'order_items' IS NOT NULL
                     ) AS pp,
-                    LATERAL json_array_elements(pp.order_items::json) AS order_item group by order_item->>'id', order_item->>'name', order_item->>'price') as prod join
+                    LATERAL json_array_elements(pp.order_items::json) AS order_item group by order_item->>'id', order_item->>'name', order_item->>'price') as prod inner join
                     (SELECT DISTINCT menu_item->>'_id' AS id, menu_item->>'name' AS name, rest_id
                     FROM (
                     SELECT object_value::JSON->>'menu' AS menu, object_value::JSON->>'_id' AS rest_id 
                     FROM stg.ordersystem_restaurants
                     WHERE object_value::JSON->>'menu' IS NOT NULL
                     ) AS pp,
-                    LATERAL json_array_elements(pp.menu::json) AS menu_item) as rest on prod.id = rest.id join dds.dm_restaurants dr on rest.rest_id = dr.restaurant_id
+                    LATERAL json_array_elements(pp.menu::json) AS menu_item) as rest on prod.id = rest.id inner join dds.dm_restaurants dr on rest.rest_id = dr.restaurant_id
                     ) dd WHERE id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.

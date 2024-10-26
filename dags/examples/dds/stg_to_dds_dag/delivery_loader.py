@@ -33,7 +33,7 @@ class DeliveriesOriginRepository:
                     select * from (
                     select ROW_NUMBER() OVER (ORDER BY (SELECT 1))::int4 AS id, oo.delivery_id, du.id as courier_id, dr.id as order_id, dt.id as timestamp_id, da.id as address_id ,oo.rate as rate,oo.tip_sum as tip_sum
                     from (select object_value::JSON->>'delivery_id' as delivery_id, TO_CHAR(TO_TIMESTAMP(object_value::JSON->>'delivery_ts', 'YYYY-MM-DD"T"HH24:MI:SS'), 'YYYY-MM-DD" "HH24:MI:SS') AS delivery_ts, object_value::JSON->>'courier_id' as courier_id, object_value::JSON->>'order_id' AS order_id, object_value::JSON->>'address' as address_id, object_value::JSON->>'rate' as rate,object_value::JSON->>'tip_sum' as tip_sum
-                    from stg.apisystem_deliveries) oo join dds.dm_timestamps dt on oo.delivery_ts = dt.ts::text join dds.dm_couriers du on oo.courier_id = du.courier_id join dds.dm_orders dr on oo.order_id = dr.order_key join dds.dm_addresses da on oo.address_id = da.address
+                    from stg.apisystem_deliveries) oo inner join dds.dm_timestamps dt on oo.delivery_ts = dt.ts::text inner join dds.dm_couriers du on oo.courier_id = du.courier_id inner join dds.dm_orders dr on oo.order_id = dr.order_key inner join dds.dm_addresses da on oo.address_id = da.address
                     ) aa
                     WHERE id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.

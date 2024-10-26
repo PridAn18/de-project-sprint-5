@@ -29,7 +29,7 @@ class OrdersOriginRepository:
                 """
                     select * from (select ROW_NUMBER() OVER (ORDER BY (SELECT 1))::int4 AS id, du.id as user_id, dr.id as restaurant_id, dt.id as timestamp_id, oo.order_key as order_key,oo.final_status as order_status
                     from (select object_value::JSON->>'_id' AS order_key,object_value::JSON->>'final_status' AS final_status, object_value::JSON->>'date' AS date, object_value::JSON->'user'->>'id' as user, object_value::JSON->'restaurant'->>'id' AS restaurant
-                    from stg.ordersystem_orders) oo join dds.dm_timestamps dt on oo.date = dt.ts::text join dds.dm_users du on oo.user = du.user_id join dds.dm_restaurants dr on oo.restaurant = dr.restaurant_id ) aa
+                    from stg.ordersystem_orders) oo inner join dds.dm_timestamps dt on oo.date = dt.ts::text inner join dds.dm_users du on oo.user = du.user_id inner join dds.dm_restaurants dr on oo.restaurant = dr.restaurant_id ) aa
                     WHERE id > %(threshold)s --Пропускаем те объекты, которые уже загрузили.
                     ORDER BY id ASC --Обязательна сортировка по id, т.к. id используем в качестве курсора.
                     LIMIT %(limit)s; --Обрабатываем только одну пачку объектов.

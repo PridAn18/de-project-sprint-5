@@ -41,9 +41,9 @@ class ProductSalesOriginRepository:
 
                     from stg.ordersystem_orders,
                     LATERAL jsonb_array_elements(object_value::jsonb->'order_items') AS item) oo 
-                    join dds.dm_orders dor on oo.order_key = dor.order_key 
-                    join dds.dm_products dp on oo.product_key = dp.product_id
-                    join 
+                    inner join dds.dm_orders dor on oo.order_key = dor.order_key 
+                    inner join dds.dm_products dp on oo.product_key = dp.product_id
+                    inner join 
                     (select
                     event_value::JSON->>'order_id' AS order_key,
                     item->>'product_id'::text AS product_key,
